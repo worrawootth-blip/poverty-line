@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poverty Line Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f8fa;
+  --white: #ffffff;
+  --border: #e2e6ed;
+  --text: #1c2b3a;
+  --muted: #6b7c93;
+  --chronic: #b91c1c;
+  --chronic-bg: #fef2f2;
+  --chronic-bd: #fecaca;
+  --transient: #d97706;
+  --transient-bg: #fffbeb;
+  --transient-bd: #fde68a;
+  --vulnerable: #1d6fa4;
+  --vulnerable-bg: #eff6ff;
+  --vulnerable-bd: #bfdbfe;
+  --safe: #166534;
+  --safe-bg: #f0fdf4;
+  --safe-bd: #bbf7d0;
+  --accent: #1d4ed8;
+}
+
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 28px 16px 60px;
+  min-height: 100vh;
+}
+
+#app { max-width: 1020px; margin: auto; }
+
+/* ── Header ── */
+.page-header {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 36px 28px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.page-header::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, #b91c1c 0%, #d97706 33%, #1d6fa4 66%, #166534 100%);
+}
+.page-header h1 {
+  font-size: 1.65em; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em; margin-bottom: 6px;
+}
+.page-header .sub {
+  color: var(--muted); font-size: 0.88em; line-height: 1.6;
+}
+.formula-strip {
+  margin-top: 16px; padding: 12px 16px;
+  background: #f1f5f9; border-radius: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.88em; color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 10px 6px; border-radius: 7px; border: none;
+  background: transparent; color: var(--muted);
+  cursor: pointer; font-family: 'Sarabun', sans-serif;
+  font-size: 0.88em; font-weight: 600; transition: all 0.2s;
+}
+.tab-btn.active {
+  background: var(--accent); color: white;
+  box-shadow: 0 2px 8px rgba(29,78,216,0.25);
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── Cards ── */
+.card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; margin-bottom: 18px;
+}
+.card-title {
+  font-size: 0.78em; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title span { font-size: 1.3em; }
+
+/* ── Grid ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+/* ── Form elements ── */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  font-size: 0.8em; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+}
+.field label .hint { font-weight: 400; color: var(--muted); font-size: 0.9em; }
+.field input, .field select {
+  padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: 7px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.92em; color: var(--text); background: var(--white);
+  transition: border 0.2s;
+}
+.field input:focus, .field select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29,78,216,0.1);
+}
+.field .unit-row { display: flex; gap: 8px; align-items: center; }
+.field .unit-row input { flex: 1; }
+.field .unit { font-size: 0.78em; color: var(--muted); white-space: nowrap; }
+
+/* Population table */
+.pop-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.pop-table th {
+  text-align: left; padding: 8px 10px;
+  background: #f8fafc; border-bottom: 2px solid var(--border);
+  font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+  font-weight: 700;
+}
+.pop-table td { padding: 8px 10px; border-bottom: 1px solid #f1f4f8; }
+.pop-table td input {
+  width: 100%; padding: 6px 8px; border: 1px solid var(--border);
+  border-radius: 5px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.88em; background: var(--white);
+}
+.pop-table td input:focus { outline: none; border-color: var(--accent); }
+.pop-table tr:hover td { background: #fafbfd; }
+.add-row-btn {
+  margin-top: 10px; padding: 7px 14px; border-radius: 6px;
+  border: 1px dashed var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; font-size: 0.82em;
+  font-family: 'Sarabun', sans-serif; transition: all 0.2s;
+}
+.add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.del-row-btn {
+  padding: 4px 8px; border-radius: 4px; border: none;
+  background: #fef2f2; color: var(--chronic); cursor: pointer; font-size: 0.8em;
+}
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.btn-primary {
+  padding: 12px 28px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: white; font-weight: 700; font-size: 1em;
+  cursor: pointer; font-family: 'Sarabun', sans-serif;
+  transition: all 0.2s; box-shadow: 0 2px 10px rgba(29,78,216,0.3);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(29,78,216,0.4); }
+.btn-ghost {
+  padding: 12px 20px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--white);
+  color: var(--muted); font-size: 0.9em; cursor: pointer;
+  font-family: 'Sarabun', sans-serif; transition: all 0.2s;
+}
+.btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+/* ── Results ── */
+#result-panel { display: none; margin-top: 4px; }
+
+.pov-line-hero {
+  border-radius: 12px; padding: 24px 28px; margin-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 20px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #bfdbfe;
+}
+.pov-line-hero .left .lbl { font-size: 0.8em; color: #4b6cb7; font-weight: 600; margin-bottom: 4px; }
+.pov-line-hero .left .big {
+  font-family: 'IBM Plex Mono', monospace; font-size: 2.1em;
+  font-weight: 600; color: var(--accent);
+}
+.pov-line-hero .left .sub { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+.pov-chips { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.pov-chip {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 16px; border-radius: 8px; min-width: 100px;
+  background: white; border: 1px solid var(--border);
+}
+.pov-chip .cv { font-family: 'IBM Plex Mono', monospace; font-size: 1.05em; font-weight: 700; }
+.pov-chip .cl { font-size: 0.7em; color: var(--muted); margin-top: 3px; }
+
+/* FGT cards */
+.fgt-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 18px; }
+.fgt-card {
+  border-radius: 10px; padding: 18px; border-left: 4px solid;
+}
+.fgt-card.p0 { background: #fef2f2; border-color: var(--chronic); }
+.fgt-card.p1 { background: #fffbeb; border-color: var(--transient); }
+.fgt-card.p2 { background: #f5f3ff; border-color: #7c3aed; }
+.fgt-card .f-label { font-size: 0.72em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.fgt-card .f-name { font-size: 0.85em; font-weight: 600; margin: 4px 0; }
+.fgt-card .f-val {
+  font-family: 'IBM Plex Mono', monospace; font-size: 1.8em; font-weight: 700; margin: 6px 0;
+}
+.fgt-card.p0 .f-val { color: var(--chronic); }
+.fgt-card.p1 .f-val { color: var(--transient); }
+.fgt-card.p2 .f-val { color: #7c3aed; }
+.fgt-card .f-desc { font-size: 0.76em; color: var(--muted); line-height: 1.5; }
+
+/* Group classification */
+.group-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 18px; }
+.group-card {
+  border-radius: 10px; padding: 16px; text-align: center;
+  border: 1px solid; position: relative; overflow: hidden;
+}
+.group-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.group-card.chronic { background: var(--chronic-bg); border-color: var(--chronic-bd); }
+.group-card.chronic::before { background: var(--chronic); }
+.group-card.transient { background: var(--transient-bg); border-color: var(--transient-bd); }
+.group-card.transient::before { background: var(--transient); }
+.group-card.vulnerable { background: var(--vulnerable-bg); border-color: var(--vulnerable-bd); }
+.group-card.vulnerable::before { background: var(--vulnerable); }
+.group-card.safe { background: var(--safe-bg); border-color: var(--safe-bd); }
+.group-card.safe::before { background: var(--safe); }
+.group-card .g-icon { font-size: 1.6em; margin-bottom: 6px; }
+.group-card .g-name { font-size: 0.82em; font-weight: 700; margin-bottom: 4px; }
+.group-card.chronic .g-name { color: var(--chronic); }
+.group-card.transient .g-name { color: var(--transient); }
+.group-card.vulnerable .g-name { color: var(--vulnerable); }
+.group-card.safe .g-name { color: var(--safe); }
+.group-card .g-count {
+  font-family: 'IBM Plex Mono', monospace; font-size: 1.4em; font-weight: 700; color: var(--text);
+}
+.group-card .g-pct { font-size: 0.75em; color: var(--muted); margin-top: 2px; }
+.group-card .g-range { font-size: 0.72em; color: var(--muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(0,0,0,0.07); }
+
+/* Charts */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.chart-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.chart-card h4 { font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 14px; }
+.chart-wrap { position: relative; height: 230px; }
+
+/* Analysis */
+.analysis-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 18px; }
+.analysis-card h3 { font-size: 0.8em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 14px; }
+.a-row {
+  display: flex; gap: 12px; padding: 13px 14px;
+  border-radius: 8px; margin-bottom: 10px;
+  border: 1px solid var(--border); background: #fafbfc;
+}
+.a-row:last-child { margin-bottom: 0; }
+.a-ico { font-size: 1.2em; flex-shrink: 0; margin-top: 1px; }
+.a-body .a-title { font-weight: 700; font-size: 0.88em; margin-bottom: 3px; }
+.a-body .a-text { font-size: 0.81em; color: var(--muted); line-height: 1.6; }
+.badge {
+  display: inline-block; font-size: 0.68em; padding: 2px 8px;
+  border-radius: 20px; font-weight: 700; margin-left: 6px; vertical-align: middle;
+}
+.bd-red    { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.bd-amber  { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.bd-blue   { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.bd-green  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.bd-purple { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
+
+/* poverty spectrum bar */
+.spectrum-wrap { margin-bottom: 18px; }
+.spectrum-bar {
+  height: 28px; border-radius: 6px; overflow: hidden;
+  display: flex; margin-bottom: 8px;
+}
+.spectrum-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.72em; font-weight: 700; color: white; transition: width 0.4s; overflow: hidden; white-space: nowrap; }
+.spec-label-row { display: flex; gap: 0; font-size: 0.72em; }
+.spec-label { flex: 1; text-align: center; padding: 2px 4px; }
+
+/* MPI section */
+.mpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.mpi-dim {
+  border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  background: #fafbfc;
+}
+.mpi-dim .d-title { font-size: 0.78em; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+.mpi-dim .d-field { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-size: 0.76em; }
+.mpi-dim .d-field label { color: var(--muted); }
+.mpi-dim .d-field input {
+  width: 64px; padding: 4px 6px; border: 1px solid var(--border);
+  border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.88em;
+  text-align: right;
+}
+.mpi-dim .d-field input:focus { outline: none; border-color: var(--accent); }
+
+.mpi-result-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px; }
+.mpi-res-card {
+  border-radius: 8px; padding: 14px; text-align: center;
+  background: #f8fafc; border: 1px solid var(--border);
+}
+.mpi-res-card .mr-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.5em; font-weight: 700; color: var(--accent); }
+.mpi-res-card .mr-lbl { font-size: 0.72em; color: var(--muted); margin-top: 4px; }
+
+@media (max-width: 700px) {
+  .grid-2, .fgt-grid, .group-grid, .charts-row, .mpi-grid, .mpi-result-grid { grid-template-columns: 1fr 1fr; }
+  .group-grid { grid-template-columns: 1fr 1fr; }
+  .pov-line-hero { flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .fgt-grid, .group-grid, .charts-row, .mpi-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<div class="page-header">
+  <h1>🧮 Poverty Line Calculator</h1>
+  <p class="sub">คำนวณเส้นความยากจน · ดัชนี FGT · จำแนกกลุ่มคนจน 3 ประเภท · MPI หลายมิติ</p>
+  <div class="formula-strip">
+    Poverty Line = Food Poverty Line + Non-Food Poverty Line &nbsp;|&nbsp;
+    P(α) = (1/n) × Σ [(z − yᵢ)/z]^α
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tab-pl')">📐 เส้นความยากจน</button>
+  <button class="tab-btn" onclick="switchTab('tab-fgt')">📊 FGT Index + กลุ่มคนจน</button>
+  <button class="tab-btn" onclick="switchTab('tab-mpi')">🌐 MPI หลายมิติ</button>
+</div>
+
+<!-- ════════════ TAB 1: Poverty Line ════════════ -->
+<div id="tab-pl" class="tab-pane active">
+  <div class="grid-2">
+
+    <div class="card">
+      <div class="card-title"><span>🍚</span> Food Poverty Line</div>
+      <div class="field">
+        <label>พลังงานขั้นต่ำ/คน/วัน <span class="hint">(kcal)</span></label>
+        <div class="unit-row"><input type="number" id="kcal" value="2100"><span class="unit">กิโลแคลอรี</span></div>
+      </div>
+      <div class="field">
+        <label>ราคาอาหาร/100 kcal <span class="hint">(บาท)</span></label>
+        <div class="unit-row"><input type="number" id="foodPrice" value="8" step="0.1"><span class="unit">บาท</span></div>
+      </div>
+      <div class="field">
+        <label>จำนวนสมาชิกในครัวเรือน</label>
+        <div class="unit-row"><input type="number" id="hhSize" value="3.2" step="0.1"><span class="unit">คน</span></div>
+      </div>
+      <div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border-radius:7px;border:1px solid #bbf7d0;">
+        <span style="font-size:0.78em;color:#166534;font-weight:600;">Food PL/คน/วัน = </span>
+        <span id="fpl-preview" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#166534;">168 บาท</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🏠</span> Non-Food Poverty Line</div>
+      <div class="field">
+        <label>ค่าที่พัก/คน/เดือน</label>
+        <div class="unit-row"><input type="number" id="nf-housing" value="800"><span class="unit">บาท</span></div>
+      </div>
+      <div class="field">
+        <label>ค่าเสื้อผ้า/คน/เดือน</label>
+        <div class="unit-row"><input type="number" id="nf-clothing" value="200"><span class="unit">บาท</span></div>
+      </div>
+      <div class="field">
+        <label>ค่าเดินทาง/คน/เดือน</label>
+        <div class="unit-row"><input type="number" id="nf-transport" value="300"><span class="unit">บาท</span></div>
+      </div>
+      <div class="field">
+        <label>ค่าใช้จ่ายอื่น/คน/เดือน</label>
+        <div class="unit-row"><input type="number" id="nf-other" value="200"><span class="unit">บาท</span></div>
+      </div>
+      <div style="margin-top:10px;padding:10px 14px;background:#eff6ff;border-radius:7px;border:1px solid #bfdbfe;">
+        <span style="font-size:0.78em;color:#1e40af;font-weight:600;">Non-Food PL/คน/เดือน = </span>
+        <span id="nfpl-preview" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#1e40af;">1,500 บาท</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🌍</span> เกณฑ์สากล World Bank (เปรียบเทียบ)</div>
+    <div class="grid-3">
+      <div class="field">
+        <label>อัตราแลกเปลี่ยน USD/THB</label>
+        <div class="unit-row"><input type="number" id="usdRate" value="35" step="0.5"><span class="unit">บาท</span></div>
+      </div>
+      <div class="field">
+        <label>เกณฑ์ Extreme Poverty</label>
+        <div class="unit-row"><input type="number" id="wb-extreme" value="2.15" step="0.01"><span class="unit">USD/วัน</span></div>
+      </div>
+      <div class="field">
+        <label>เกณฑ์ Upper-Middle</label>
+        <div class="unit-row"><input type="number" id="wb-upper" value="6.85" step="0.01"><span class="unit">USD/วัน</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="calcPovLine()">▶ คำนวณเส้นความยากจน</button>
+    <button class="btn-ghost" onclick="fillExamplePL()">📋 ค่าตัวอย่าง</button>
+    <button class="btn-ghost" onclick="exportResult()">🖼 บันทึกรูปผลลัพธ์</button>
+  </div>
+
+  <!-- PL Results -->
+  <div id="pl-result" style="display:none;margin-top:20px;">
+    <div class="pov-line-hero">
+      <div class="left">
+        <div class="lbl">เส้นความยากจนรวม (Poverty Line)</div>
+        <div class="big" id="pl-total">—</div>
+        <div class="sub" id="pl-sub">บาท/คน/เดือน</div>
+      </div>
+      <div class="pov-chips" id="pl-chips"></div>
+    </div>
+    <div id="pl-compare-cards" class="grid-3" style="margin-bottom:18px;gap:14px;"></div>
+    <div id="pl-analysis"></div>
+  </div>
+</div>
+
+<!-- ════════════ TAB 2: FGT + Groups ════════════ -->
+<div id="tab-fgt" class="tab-pane">
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div class="card">
+      <div class="card-title"><span>📏</span> พารามิเตอร์</div>
+      <div class="field">
+        <label>เส้นความยากจน (z) <span class="hint">บาท/คน/เดือน</span></label>
+        <input type="number" id="fgt-z" value="3000">
+      </div>
+      <div class="field">
+        <label>จำนวนประชากรทั้งหมด (n)</label>
+        <input type="number" id="fgt-n" value="70000000">
+      </div>
+      <div class="field">
+        <label>เกณฑ์คนเปราะบาง <span class="hint">(% ของ z)</span></label>
+        <div class="unit-row">
+          <input type="number" id="vuln-threshold" value="150" step="10">
+          <span class="unit">% ของ z</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>ℹ️</span> นิยามกลุ่ม</div>
+      <div style="font-size:0.81em;line-height:1.8;color:var(--muted);">
+        <div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:var(--chronic);font-weight:700;">■ คนจนเรื้อรัง</span> รายได้ต่ำกว่า z ≥ 3 ปีต่อเนื่อง</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:var(--transient);font-weight:700;">■ คนจนชั่วคราว</span> รายได้แกว่งรอบเส้น z ไม่แน่นอน</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:var(--vulnerable);font-weight:700;">■ คนเปราะบาง</span> รายได้ z ถึง z×(Vuln%)</div>
+        <div style="display:flex;gap:8px;"><span style="color:var(--safe);font-weight:700;">■ พ้นความยากจน</span> รายได้ > z×(Vuln%)</div>
+        <div style="margin-top:10px;padding:8px 10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--accent);font-size:0.88em;color:#4b5563;">
+          ในทางปฏิบัติ คนจนเรื้อรังและชั่วคราวรวมกัน = Headcount (P₀) — ตารางด้านล่างให้แยกกรอกสัดส่วน
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <div class="card-title"><span>👥</span> ข้อมูลรายได้ประชากร (กรอกตัวแทนแต่ละกลุ่ม)</div>
+    <table class="pop-table" id="pop-table">
+      <thead><tr>
+        <th>#</th>
+        <th>กลุ่ม/ชื่อ</th>
+        <th>รายได้เฉลี่ย (บาท/เดือน)</th>
+        <th>จำนวนคนในกลุ่ม</th>
+        <th>ประเภท</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="pop-tbody"></tbody>
+    </table>
+    <button class="add-row-btn" onclick="addRow()">+ เพิ่มกลุ่ม</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="calcFGT()">▶ คำนวณ FGT + จำแนกกลุ่ม</button>
+    <button class="btn-ghost" onclick="fillExampleFGT()">📋 ค่าตัวอย่าง</button>
+    <button class="btn-ghost" onclick="exportResult()">🖼 บันทึกรูปผลลัพธ์</button>
+  </div>
+
+  <div id="fgt-result" style="display:none;margin-top:20px;">
+    <!-- Spectrum bar -->
+    <div class="card spectrum-wrap">
+      <div class="card-title"><span>📊</span> สเปกตรัมความยากจน</div>
+      <div class="spectrum-bar" id="spectrum-bar"></div>
+      <div class="spec-label-row" id="spectrum-labels"></div>
+    </div>
+
+    <!-- Group cards -->
+    <div class="group-grid" id="group-cards" style="margin-bottom:18px;"></div>
+
+    <!-- FGT cards -->
+    <div class="fgt-grid" id="fgt-cards" style="margin-bottom:18px;"></div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <h4>การกระจายกลุ่มประชากร</h4>
+        <div class="chart-wrap"><canvas id="chart-group"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>รายได้ vs เส้นความยากจน</h4>
+        <div class="chart-wrap"><canvas id="chart-income"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Analysis -->
+    <div class="analysis-card" id="fgt-analysis"></div>
+  </div>
+</div>
+
+<!-- ════════════ TAB 3: MPI ════════════ -->
+<div id="tab-mpi" class="tab-pane">
+  <div class="card" style="margin-bottom:18px;">
+    <div class="card-title"><span>🌐</span> Multidimensional Poverty Index (MPI)</div>
+    <p style="font-size:0.82em;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+      MPI = H × A &nbsp;|&nbsp; ผู้ที่ขาดแคลน ≥ 33% ของตัวชี้วัดถือว่า "ยากจนหลายมิติ"
+      กรอกสัดส่วนประชากร (%) ที่ขาดแคลนในแต่ละตัวชี้วัด
+    </p>
+    <div class="mpi-grid">
+      <div class="mpi-dim">
+        <div class="d-title">⚕️ สุขภาพ (น้ำหนัก 1/3)</div>
+        <div class="d-field"><label>โภชนาการไม่เพียงพอ</label><input type="number" id="m-nutrition" value="18" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>เด็กเสียชีวิต (ในครัวเรือน)</label><input type="number" id="m-childmort" value="8" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+      </div>
+      <div class="mpi-dim">
+        <div class="d-title">📚 การศึกษา (น้ำหนัก 1/3)</div>
+        <div class="d-field"><label>ไม่ผ่านการศึกษา 6 ปี</label><input type="number" id="m-schooling" value="25" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>เด็กไม่ได้เรียนหนังสือ</label><input type="number" id="m-attendance" value="12" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+      </div>
+      <div class="mpi-dim">
+        <div class="d-title">🏠 มาตรฐานครองชีพ (น้ำหนัก 1/3)</div>
+        <div class="d-field"><label>ไม่มีเชื้อเพลิงทำอาหารสะอาด</label><input type="number" id="m-cooking" value="20" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>ไม่มีห้องน้ำ</label><input type="number" id="m-sanitation" value="15" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>ไม่มีน้ำสะอาด</label><input type="number" id="m-water" value="10" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>ไม่มีไฟฟ้า</label><input type="number" id="m-electricity" value="8" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>พื้นบ้าน/ที่พักไม่ได้มาตรฐาน</label><input type="number" id="m-housing" value="22" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+        <div class="d-field"><label>ไม่มีสินทรัพย์พื้นฐาน</label><input type="number" id="m-assets" value="30" min="0" max="100"><span style="font-size:0.8em">%</span></div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:16px;max-width:320px;">
+      <label>จำนวนประชากรทั้งหมด</label>
+      <div class="unit-row"><input type="number" id="mpi-pop" value="70000000"><span class="unit">คน</span></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="calcMPI()">▶ คำนวณ MPI</button>
+    <button class="btn-ghost" onclick="fillExampleMPI()">📋 ค่าตัวอย่าง</button>
+    <button class="btn-ghost" onclick="exportResult()">🖼 บันทึกรูปผลลัพธ์</button>
+  </div>
+
+  <div id="mpi-result" style="display:none;margin-top:20px;">
+    <div class="mpi-result-grid" id="mpi-cards" style="margin-bottom:18px;"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h4>น้ำหนักตัวชี้วัดแต่ละมิติ</h4>
+        <div class="chart-wrap"><canvas id="chart-mpi-radar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>สัดส่วนการขาดแคลนแต่ละตัวชี้วัด</h4>
+        <div class="chart-wrap"><canvas id="chart-mpi-bar"></canvas></div>
+      </div>
+    </div>
+    <div class="analysis-card" id="mpi-analysis"></div>
+  </div>
+</div>
+
+</div><!-- end #app -->
+
+<!-- capture target for export -->
+<div id="result-panel" style="display:none;"></div>
+
+<script>
+// ── Utility ──
+const $ = id => document.getElementById(id);
+function fmt(n,dec=0){ return Number(n).toLocaleString('th-TH',{maximumFractionDigits:dec}); }
+function fmtK(n){ return n>=1e6?fmt(n/1e6,2)+' ล้าน':n>=1e3?fmt(n/1e3,1)+' พัน':fmt(n,0); }
+
+// ── Tabs ──
+function switchTab(id){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Live previews (Tab 1) ──
+function updateFPL(){
+  const kcal = parseFloat($('kcal').value)||2100;
+  const price = parseFloat($('foodPrice').value)||8;
+  const fpl = kcal/100*price;
+  $('fpl-preview').textContent = fmt(fpl,1)+' บาท/คน/วัน';
+}
+function updateNFPL(){
+  const h=parseFloat($('nf-housing').value)||0;
+  const c=parseFloat($('nf-clothing').value)||0;
+  const t=parseFloat($('nf-transport').value)||0;
+  const o=parseFloat($('nf-other').value)||0;
+  $('nfpl-preview').textContent = fmt(h+c+t+o)+' บาท/คน/เดือน';
+}
+['kcal','foodPrice'].forEach(id=>$(id).addEventListener('input',updateFPL));
+['nf-housing','nf-clothing','nf-transport','nf-other'].forEach(id=>$(id).addEventListener('input',updateNFPL));
+
+// ── TAB 1: Poverty Line ──
+function calcPovLine(){
+  const kcal     = parseFloat($('kcal').value)||2100;
+  const price    = parseFloat($('foodPrice').value)||8;
+  const hhSize   = parseFloat($('hhSize').value)||3.2;
+  const housing  = parseFloat($('nf-housing').value)||0;
+  const clothing = parseFloat($('nf-clothing').value)||0;
+  const transp   = parseFloat($('nf-transport').value)||0;
+  const other    = parseFloat($('nf-other').value)||0;
+  const usdRate  = parseFloat($('usdRate').value)||35;
+
+  const fplDay   = kcal/100*price;
+  const fplMonth = fplDay*30;
+  const nfpl     = housing+clothing+transp+other;
+  const plMonth  = fplMonth+nfpl;
+  const plDay    = plMonth/30;
+  const plYear   = plMonth*12;
+  const plHH     = plMonth*hhSize;
+
+  // World Bank
+  const wbExtreme = (parseFloat($('wb-extreme').value)||2.15)*usdRate;
+  const wbUpper   = (parseFloat($('wb-upper').value)||6.85)*usdRate;
+
+  $('pl-total').textContent = fmt(plMonth)+' บาท';
+  $('pl-sub').textContent = `${fmt(plDay,1)} บาท/คน/วัน · ${fmt(plYear)} บาท/คน/ปี`;
+
+  $('pl-chips').innerHTML = [
+    {label:'Food PL/เดือน',val:fmt(fplMonth,1),color:'#166534'},
+    {label:'Non-Food PL/เดือน',val:fmt(nfpl),color:'#1e40af'},
+    {label:'PL ต่อครัวเรือน/เดือน',val:fmt(plHH,0),color:'#7c3aed'},
+  ].map(c=>`<div class="pov-chip">
+    <div class="cv" style="color:${c.color}">${c.val}</div>
+    <div class="cl">${c.label}</div>
+  </div>`).join('');
+
+  // Compare WB
+  $('pl-compare-cards').innerHTML = [
+    {label:'เส้นยากจน (ไทย)', val:fmt(plDay,2)+' บาท/วัน', sub:`= $${fmt(plDay/usdRate,2)}/วัน`, color:'#1d4ed8', bg:'#eff6ff', bd:'#bfdbfe'},
+    {label:'Extreme Poverty (WB)', val:fmt(wbExtreme,2)+' บาท/วัน', sub:'$2.15/วัน (ทุกประเทศ)', color:'#991b1b', bg:'#fef2f2', bd:'#fecaca'},
+    {label:'Upper-Middle (WB)', val:fmt(wbUpper,2)+' บาท/วัน', sub:'$6.85/วัน (Upper-Middle)', color:'#92400e', bg:'#fffbeb', bd:'#fde68a'},
+  ].map(c=>`<div style="border-radius:10px;padding:16px;background:${c.bg};border:1px solid ${c.bd};">
+    <div style="font-size:0.75em;font-weight:700;color:var(--muted);margin-bottom:6px;">${c.label}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:1.2em;font-weight:700;color:${c.color};">${c.val}</div>
+    <div style="font-size:0.74em;color:var(--muted);margin-top:4px;">${c.sub}</div>
+  </div>`).join('');
+
+  // Analysis
+  const ratio = plDay/wbUpper;
+  let comparison;
+  if(plDay<wbExtreme) comparison=`<span class="badge bd-red">ต่ำกว่า Extreme Poverty WB</span> บ่งชี้ว่าเส้นยากจนที่ตั้งไว้ต่ำมาก ควรทบทวนค่าใช้จ่ายจริงในพื้นที่`;
+  else if(plDay<wbUpper) comparison=`<span class="badge bd-amber">อยู่ระหว่าง Extreme–Upper Middle WB</span> สอดคล้องกับมาตรฐานประเทศรายได้ปานกลาง`;
+  else comparison=`<span class="badge bd-green">สูงกว่าเกณฑ์ WB Upper-Middle</span> สะท้อนค่าครองชีพจริงที่สูงกว่าเกณฑ์สากล`;
+
+  $('pl-analysis').innerHTML = `<div class="analysis-card">
+    <h3>📋 คำอธิบายผลการคำนวณ</h3>
+    <div class="a-row"><div class="a-ico">🍚</div><div class="a-body">
+      <div class="a-title">Food Poverty Line = ${fmt(fplMonth,1)} บาท/คน/เดือน</div>
+      <div class="a-text">คำนวณจาก ${fmt(kcal)} kcal/วัน × ${price} บาท/100kcal × 30 วัน = ${fmt(fplDay,1)} บาท/วัน คิดเป็น <strong>${fmt(fplMonth/plMonth*100,1)}%</strong> ของเส้นยากจนรวม — ${fplMonth/plMonth>0.6?'สัดส่วนอาหารสูง อาจสะท้อนค่าครองชีพที่ไม่ใช่อาหารถูกประเมินต่ำ':'สัดส่วนสมดุลระหว่างอาหารและที่ไม่ใช่อาหาร'}</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">🏠</div><div class="a-body">
+      <div class="a-title">Non-Food PL = ${fmt(nfpl)} บาท/คน/เดือน (${fmt(nfpl/plMonth*100,1)}%)</div>
+      <div class="a-text">ที่พัก ${fmt(housing)} + เสื้อผ้า ${fmt(clothing)} + เดินทาง ${fmt(transp)} + อื่นๆ ${fmt(other)} บาท/เดือน ค่าใช้จ่ายที่ไม่ใช่อาหารสะท้อนต้นทุนการดำรงชีวิตในสภาพแวดล้อมจริง</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">🌍</div><div class="a-body">
+      <div class="a-title">เปรียบเทียบ World Bank ${comparison}</div>
+      <div class="a-text">เส้นยากจนที่คำนวณได้ = <strong>${fmt(plDay,2)} บาท/วัน ($${fmt(plDay/usdRate,2)})</strong> เทียบกับ Extreme Poverty $2.15 และ Upper-Middle $6.85 (อัตรา ${usdRate} บาท/USD) อัตราส่วนต่อ WB Upper-Middle = ${fmt(ratio,2)}x</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">👨‍👩‍👧</div><div class="a-body">
+      <div class="a-title">เส้นยากจนต่อครัวเรือน (${hhSize} คน) = ${fmt(plHH)} บาท/เดือน</div>
+      <div class="a-text">ครัวเรือนที่มีรายได้ต่ำกว่า <strong>${fmt(plHH)} บาท/เดือน</strong> จะถือว่าอยู่ต่ำกว่าเส้นยากจน ซึ่งเป็นเกณฑ์ที่ควรใช้ในการสำรวจข้อมูลระดับครัวเรือน</div>
+    </div></div>
+  </div>`;
+
+  $('pl-result').style.display='block';
+  $('pl-result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── TAB 2: FGT + Groups ──
+let rowData = [];
+let groupChart=null, incomeChart=null;
+
+function addRow(income='',count='',label='กลุ่ม'){
+  const id = Date.now()+Math.random();
+  rowData.push({id,income,count,label});
+  renderTable();
+}
+function removeRow(id){
+  rowData = rowData.filter(r=>r.id!==id);
+  renderTable();
+}
+function renderTable(){
+  const z = parseFloat($('fgt-z').value)||3000;
+  const vt = parseFloat($('vuln-threshold').value)||150;
+  $('pop-tbody').innerHTML = rowData.map((r,i)=>{
+    const inc = parseFloat(r.income)||0;
+    let type='', typeColor='var(--muted)';
+    if(inc>0 && inc<z){ type='คนจน'; typeColor='var(--chronic)'; }
+    else if(inc>=z && inc<z*vt/100){ type='เปราะบาง'; typeColor='var(--vulnerable)'; }
+    else if(inc>=z*vt/100){ type='พ้นความยากจน'; typeColor='var(--safe)'; }
+    return `<tr>
+      <td style="color:var(--muted);font-size:0.82em;">${i+1}</td>
+      <td><input value="${r.label}" onchange="rowData[${i}].label=this.value" placeholder="ชื่อกลุ่ม"></td>
+      <td><input type="number" value="${r.income}" onchange="rowData[${i}].income=this.value;renderTable()" placeholder="บาท/เดือน"></td>
+      <td><input type="number" value="${r.count}" onchange="rowData[${i}].count=this.value" placeholder="จำนวนคน"></td>
+      <td style="font-size:0.8em;font-weight:700;color:${typeColor};">${type}</td>
+      <td><button class="del-row-btn" onclick="removeRow(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function fillExampleFGT(){
+  $('fgt-z').value=3000; $('fgt-n').value=70000000; $('vuln-threshold').value=150;
+  rowData=[];
+  [
+    {label:'คนจนเรื้อรัง',income:900,count:3500000},
+    {label:'คนจนเรื้อรัง (ชนบทห่างไกล)',income:1400,count:2800000},
+    {label:'คนจนชั่วคราว (เกษตร)',income:2100,count:4200000},
+    {label:'คนจนชั่วคราว (แรงงานไม่มีฝีมือ)',income:2700,count:3900000},
+    {label:'คนเปราะบาง (รายได้ต่ำ)',income:3500,count:8000000},
+    {label:'คนเปราะบาง (เกษตรกรรายย่อย)',income:4000,count:6500000},
+    {label:'รายได้ปานกลางล่าง',income:7000,count:15000000},
+    {label:'รายได้ปานกลาง',income:15000,count:18000000},
+    {label:'รายได้สูง',income:40000,count:8100000},
+  ].forEach(r=>{ rowData.push({id:Date.now()+Math.random(),...r}); });
+  renderTable();
+}
+function calcFGT(){
+  const z  = parseFloat($('fgt-z').value)||3000;
+  const n  = parseFloat($('fgt-n').value)||70000000;
+  const vt = parseFloat($('vuln-threshold').value)||150;
+  const vulnLine = z*vt/100;
+
+  if(rowData.length===0){ alert('กรุณากรอกข้อมูลประชากรก่อน'); return; }
+
+  let chronic=0, transient=0, vulnerable=0, safe=0;
+  let gapSum=0, sevSum=0, poorCount=0;
+  const incomes=[], counts=[];
+
+  rowData.forEach(r=>{
+    const y = parseFloat(r.income)||0;
+    const c = parseFloat(r.count)||0;
+    incomes.push(y); counts.push(c);
+    if(y<z){
+      poorCount+=c;
+      const gap=(z-y)/z;
+      gapSum+=gap*c;
+      sevSum+=gap*gap*c;
+      if(y<z*0.6) chronic+=c; else transient+=c;
+    } else if(y<vulnLine) vulnerable+=c;
+    else safe+=c;
+  });
+
+  const totalSurveyed = counts.reduce((a,b)=>a+b,0);
+  const P0 = poorCount/totalSurveyed;
+  const P1 = gapSum/totalSurveyed;
+  const P2 = sevSum/totalSurveyed;
+  const extraSafe = Math.max(0, n - totalSurveyed);
+
+  // Spectrum bar
+  const total = chronic+transient+vulnerable+safe+extraSafe;
+  const pcts = [chronic,transient,vulnerable,safe+extraSafe].map(v=>v/total*100);
+  const colors=['#b91c1c','#d97706','#1d6fa4','#166534'];
+  const labels=['คนจนเรื้อรัง','คนจนชั่วคราว','เปราะบาง','พ้นความยากจน'];
+  $('spectrum-bar').innerHTML = pcts.map((p,i)=>
+    `<div class="spectrum-seg" style="background:${colors[i]};width:${p}%">${p>5?fmt(p,1)+'%':''}</div>`
+  ).join('');
+  $('spectrum-labels').innerHTML = pcts.map((p,i)=>
+    `<div class="spec-label" style="color:${colors[i]};font-weight:600;">${labels[i]}<br>${fmt(p,1)}%</div>`
+  ).join('');
+
+  // Group cards
+  const groups=[
+    {cls:'chronic',icon:'🔴',name:'คนจนเรื้อรัง',count:chronic,range:`รายได้ < ${fmt(z*0.6)} บาท/เดือน`,desc:'ต่ำกว่า 60% ของ z'},
+    {cls:'transient',icon:'🟡',name:'คนจนชั่วคราว',count:transient,range:`${fmt(z*0.6)}–${fmt(z)} บาท/เดือน`,desc:'60%–100% ของ z'},
+    {cls:'vulnerable',icon:'🔵',name:'คนเปราะบาง',count:vulnerable,range:`${fmt(z)}–${fmt(vulnLine)} บาท/เดือน`,desc:`100%–${vt}% ของ z`},
+    {cls:'safe',icon:'🟢',name:'พ้นความยากจน',count:safe+extraSafe,range:`> ${fmt(vulnLine)} บาท/เดือน`,desc:`สูงกว่า ${vt}% ของ z`},
+  ];
+  $('group-cards').innerHTML = groups.map(g=>`
+    <div class="group-card ${g.cls}">
+      <div class="g-icon">${g.icon}</div>
+      <div class="g-name">${g.name}</div>
+      <div class="g-count">${fmtK(g.count)}</div>
+      <div class="g-pct">คน (${fmt(g.count/n*100,1)}% ของประชากร)</div>
+      <div class="g-range">${g.range}<br><span style="font-size:0.88em;">${g.desc}</span></div>
+    </div>`).join('');
+
+  // FGT cards
+  $('fgt-cards').innerHTML = `
+    <div class="fgt-card p0">
+      <div class="f-label">FGT α=0</div>
+      <div class="f-name">Headcount Ratio (P₀)</div>
+      <div class="f-val">${fmt(P0*100,2)}%</div>
+      <div class="f-desc">ประชากร <strong>${fmtK(poorCount)} คน</strong> (${fmt(P0*100,1)}%) อยู่ต่ำกว่าเส้นยากจน วัดขนาดของปัญหาความยากจน</div>
+    </div>
+    <div class="fgt-card p1">
+      <div class="f-label">FGT α=1</div>
+      <div class="f-name">Poverty Gap (P₁)</div>
+      <div class="f-val">${fmt(P1*100,3)}%</div>
+      <div class="f-desc">รายได้เฉลี่ยของคนจนห่างจากเส้นยากจน <strong>${fmt(P1*100,1)}%</strong> ต้องงบประมาณ ~${fmtK(P1*z*n)} บาท/เดือน เพื่อยกระดับทุกคนขึ้นมาพอดีเส้น</div>
+    </div>
+    <div class="fgt-card p2">
+      <div class="f-label">FGT α=2</div>
+      <div class="f-name">Poverty Severity (P₂)</div>
+      <div class="f-val">${fmt(P2*100,4)}%</div>
+      <div class="f-desc">วัดความรุนแรงของความยากจน ให้น้ำหนักคนที่จนที่สุดมากขึ้น ค่าสูงหมายถึงความเหลื่อมล้ำในกลุ่มคนจนสูง</div>
+    </div>`;
+
+  // Charts
+  if(groupChart) groupChart.destroy();
+  groupChart = new Chart($('chart-group').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:labels,
+      datasets:[{data:[chronic,transient,vulnerable,safe+extraSafe],
+        backgroundColor:['rgba(185,28,28,0.8)','rgba(217,119,6,0.8)','rgba(29,111,164,0.8)','rgba(22,101,52,0.8)'],
+        borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#6b7c93',font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>` ${fmtK(c.parsed)} คน (${fmt(c.parsed/n*100,1)}%)`}}}}
+  });
+
+  if(incomeChart) incomeChart.destroy();
+  const sortedRows=[...rowData].sort((a,b)=>a.income-b.income);
+  incomeChart = new Chart($('chart-income').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:sortedRows.map(r=>r.label),
+      datasets:[
+        {label:'รายได้เฉลี่ย',data:sortedRows.map(r=>parseFloat(r.income)||0),
+          backgroundColor:sortedRows.map(r=>{
+            const y=parseFloat(r.income)||0;
+            if(y<z*0.6) return 'rgba(185,28,28,0.75)';
+            if(y<z) return 'rgba(217,119,6,0.75)';
+            if(y<vulnLine) return 'rgba(29,111,164,0.75)';
+            return 'rgba(22,101,52,0.75)';
+          }),borderRadius:4},
+        {label:'เส้นยากจน (z)',data:sortedRows.map(()=>z),
+          type:'line',borderColor:'#ef4444',borderWidth:2,borderDash:[5,4],pointRadius:0},
+        {label:`เกณฑ์เปราะบาง (${vt}% z)`,data:sortedRows.map(()=>vulnLine),
+          type:'line',borderColor:'#3b82f6',borderWidth:2,borderDash:[5,4],pointRadius:0},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#6b7c93',font:{size:10},boxWidth:10}}},
+      scales:{
+        y:{ticks:{color:'#6b7c93',callback:v=>fmt(v)+' ฿'},grid:{color:'rgba(0,0,0,0.05)'}},
+        x:{ticks:{color:'#6b7c93',font:{size:10},maxRotation:30},grid:{display:false}}
+      }}
+  });
+
+  // Analysis
+  let p0Badge, p0Class;
+  if(P0>0.3){p0Badge='สัดส่วนคนจนสูงมาก';p0Class='bd-red';}
+  else if(P0>0.1){p0Badge='ระดับน่าเป็นห่วง';p0Class='bd-amber';}
+  else if(P0>0.03){p0Badge='ระดับปานกลาง';p0Class='bd-blue';}
+  else{p0Badge='ต่ำ';p0Class='bd-green';}
+
+  $('fgt-analysis').innerHTML = `
+    <h3>📊 คำอธิบายเชิงคุณภาพ</h3>
+    <div class="a-row"><div class="a-ico">📐</div><div class="a-body">
+      <div class="a-title">Headcount Ratio P₀ = ${fmt(P0*100,2)}% <span class="badge ${p0Class}">${p0Badge}</span></div>
+      <div class="a-text">ประชากร <strong>${fmtK(poorCount)} คน</strong> อยู่ต่ำกว่าเส้นยากจน ${fmt(z)} บาท/เดือน
+      ${P0>0.3?'ระดับนี้ถือว่ารุนแรง ต้องการมาตรการเร่งด่วนทั้งระยะสั้น (เงินช่วยเหลือ) และระยะยาว (การศึกษา โครงสร้าง)'
+      :P0>0.1?'ความยากจนยังอยู่ในระดับที่ต้องการนโยบายเชิงรุก โดยเฉพาะกลุ่มคนจนเรื้อรังและชั่วคราว'
+      :'สัดส่วนต่ำถือว่าดี แต่ยังต้องป้องกันไม่ให้กลุ่มเปราะบางตกหล่นลงมา'}</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">🕳️</div><div class="a-body">
+      <div class="a-title">Poverty Gap P₁ = ${fmt(P1*100,3)}% — ต้องงบ ~${fmtK(P1*z*n)} บาท/เดือน</div>
+      <div class="a-text">งบประมาณขั้นต่ำที่ต้องการเพื่อยกรายได้คนจนทุกคนขึ้นมาพอดีเส้นยากจน หาก P₁ สูงเมื่อเทียบกับ P₀ แสดงว่าคนจนส่วนใหญ่อยู่ <em>ลึกใต้</em>เส้นยากจน ต้องการทรัพยากรมากกว่าเพียงแค่การโอนเงิน</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">⚖️</div><div class="a-body">
+      <div class="a-title">Poverty Severity P₂ = ${fmt(P2*100,4)}%</div>
+      <div class="a-text">วัดความเหลื่อมล้ำภายในกลุ่มคนจน P₂/P₁ ratio = ${fmt(P2/P1,3)} — ${P2/P1>0.5?'อัตราส่วนสูง บ่งชี้ว่ามีคนจนที่จนมากกว่าค่าเฉลี่ยในกลุ่มคนจนอย่างมีนัยสำคัญ นโยบายต้องเน้นกลุ่ม Chronic Poor เป็นพิเศษ':'อัตราส่วนพอรับได้ ความเหลื่อมล้ำในกลุ่มคนจนไม่รุนแรงมาก'}</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">🎯</div><div class="a-body">
+      <div class="a-title">กลุ่มเปราะบาง = ${fmtK(vulnerable)} คน (${fmt(vulnerable/n*100,1)}%) — เสี่ยงตกเป็นคนจน</div>
+      <div class="a-text">กลุ่มเปราะบางมักถูกละเลยในนโยบาย แต่มีความสำคัญสูงเพราะหากเผชิญแรงกระแทก (เจ็บป่วย ภัยพิบัติ ตกงาน) จะตกต่ำกว่าเส้นยากจนได้ทันที ควรมีระบบ Safety Net และประกันสังคมรองรับ</div>
+    </div></div>`;
+
+  $('fgt-result').style.display='block';
+  $('fgt-result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── TAB 3: MPI ──
+let mpiRadar=null, mpiBar=null;
+function calcMPI(){
+  const indicators = [
+    {id:'m-nutrition',  label:'โภชนาการ',        dim:'health',  w:1/6},
+    {id:'m-childmort',  label:'เด็กเสียชีวิต',  dim:'health',  w:1/6},
+    {id:'m-schooling',  label:'การศึกษา 6 ปี',  dim:'edu',     w:1/6},
+    {id:'m-attendance', label:'เด็กไม่เรียน',    dim:'edu',     w:1/6},
+    {id:'m-cooking',    label:'เชื้อเพลิง',      dim:'living',  w:1/18},
+    {id:'m-sanitation', label:'ห้องน้ำ',          dim:'living',  w:1/18},
+    {id:'m-water',      label:'น้ำสะอาด',         dim:'living',  w:1/18},
+    {id:'m-electricity',label:'ไฟฟ้า',            dim:'living',  w:1/18},
+    {id:'m-housing',    label:'ที่พัก',            dim:'living',  w:1/18},
+    {id:'m-assets',     label:'สินทรัพย์',         dim:'living',  w:1/18},
+  ];
+  const pop = parseFloat($('mpi-pop').value)||70000000;
+
+  const vals = indicators.map(ind=>({...ind, pct:parseFloat($(ind.id).value)||0}));
+  const weightedScore = vals.reduce((s,v)=>s+v.pct/100*v.w,0);
+  // H = % of people deprived in ≥33% weighted indicators (approximate with avg)
+  const avgDeprivation = vals.reduce((s,v)=>s+v.pct/100,0)/vals.length;
+  const H = Math.min(avgDeprivation*1.2, 0.99); // estimated
+  const A = weightedScore/H;
+  const MPI = H*A;
+
+  $('mpi-cards').innerHTML = [
+    {label:'MPI',val:fmt(MPI,4),sub:'H × A',color:'#1d4ed8',bg:'#eff6ff',bd:'#bfdbfe'},
+    {label:'H — Incidence',val:fmt(H*100,1)+'%',sub:'สัดส่วนคนยากจนหลายมิติ',color:'#991b1b',bg:'#fef2f2',bd:'#fecaca'},
+    {label:'A — Intensity',val:fmt(A*100,1)+'%',sub:'ความเข้มข้นเฉลี่ยของการขาดแคลน',color:'#92400e',bg:'#fffbeb',bd:'#fde68a'},
+    {label:'คนยากจน MPI',val:fmtK(H*pop),sub:'คน (ประมาณ)',color:'#5b21b6',bg:'#f5f3ff',bd:'#ddd6fe'},
+    {label:'Dim: สุขภาพ',val:fmt(vals.filter(v=>v.dim==='health').reduce((s,v)=>s+v.pct,0)/2,1)+'%',sub:'ขาดแคลนเฉลี่ย',color:'#166534',bg:'#f0fdf4',bd:'#bbf7d0'},
+    {label:'Dim: ครองชีพ',val:fmt(vals.filter(v=>v.dim==='living').reduce((s,v)=>s+v.pct,0)/6,1)+'%',sub:'ขาดแคลนเฉลี่ย',color:'#0e7490',bg:'#ecfeff',bd:'#a5f3fc'},
+  ].map(c=>`<div class="mpi-res-card" style="background:${c.bg};border-color:${c.bd};">
+    <div class="mr-val" style="color:${c.color};">${c.val}</div>
+    <div class="mr-lbl">${c.label}<br><span style="font-size:0.88em;">${c.sub}</span></div>
+  </div>`).join('');
+
+  if(mpiRadar) mpiRadar.destroy();
+  if(mpiBar) mpiBar.destroy();
+
+  mpiRadar = new Chart($('chart-mpi-radar').getContext('2d'),{
+    type:'radar',
+    data:{
+      labels:['สุขภาพ','การศึกษา','มาตรฐานครองชีพ'],
+      datasets:[{
+        label:'% ขาดแคลนเฉลี่ย',
+        data:[
+          vals.filter(v=>v.dim==='health').reduce((s,v)=>s+v.pct,0)/2,
+          vals.filter(v=>v.dim==='edu').reduce((s,v)=>s+v.pct,0)/2,
+          vals.filter(v=>v.dim==='living').reduce((s,v)=>s+v.pct,0)/6,
+        ],
+        backgroundColor:'rgba(29,78,216,0.15)',
+        borderColor:'rgba(29,78,216,0.8)',
+        pointBackgroundColor:'#1d4ed8',
+        borderWidth:2,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{r:{ticks:{color:'#6b7c93',backdropColor:'transparent'},grid:{color:'rgba(0,0,0,0.08)'},pointLabels:{color:'#1c2b3a',font:{size:12}}}},
+      plugins:{legend:{labels:{color:'#6b7c93'}}}}
+  });
+
+  mpiBar = new Chart($('chart-mpi-bar').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:vals.map(v=>v.label),
+      datasets:[{
+        label:'% ขาดแคลน',
+        data:vals.map(v=>v.pct),
+        backgroundColor:vals.map(v=>
+          v.dim==='health'?'rgba(185,28,28,0.7)':
+          v.dim==='edu'?'rgba(217,119,6,0.7)':'rgba(29,78,216,0.7)'),
+        borderRadius:4,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#6b7c93',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.05)'},max:100},
+        y:{ticks:{color:'#6b7c93',font:{size:10}},grid:{display:false}}
+      }}
+  });
+
+  let mpiLevel,mpiClass;
+  if(MPI>0.3){mpiLevel='สูงมาก';mpiClass='bd-red';}
+  else if(MPI>0.1){mpiLevel='ปานกลาง';mpiClass='bd-amber';}
+  else if(MPI>0.02){mpiLevel='ต่ำ';mpiClass='bd-blue';}
+  else{mpiLevel='ต่ำมาก';mpiClass='bd-green';}
+
+  const topDim = ['สุขภาพ','การศึกษา','มาตรฐานครองชีพ'][
+    [vals.filter(v=>v.dim==='health').reduce((s,v)=>s+v.pct,0),
+     vals.filter(v=>v.dim==='edu').reduce((s,v)=>s+v.pct,0),
+     vals.filter(v=>v.dim==='living').reduce((s,v)=>s+v.pct,0)]
+    .indexOf(Math.max(...[vals.filter(v=>v.dim==='health').reduce((s,v)=>s+v.pct,0),
+     vals.filter(v=>v.dim==='edu').reduce((s,v)=>s+v.pct,0),
+     vals.filter(v=>v.dim==='living').reduce((s,v)=>s+v.pct,0)]))
+  ];
+  const topIndicator = [...vals].sort((a,b)=>b.pct-a.pct)[0];
+
+  $('mpi-analysis').innerHTML = `
+    <h3>📊 คำอธิบาย MPI</h3>
+    <div class="a-row"><div class="a-ico">🌐</div><div class="a-body">
+      <div class="a-title">MPI = ${fmt(MPI,4)} <span class="badge ${mpiClass}">${mpiLevel}</span></div>
+      <div class="a-text">MPI = H (${fmt(H*100,1)}%) × A (${fmt(A*100,1)}%) — ประชากรประมาณ <strong>${fmtK(H*pop)} คน</strong> จัดว่ายากจนหลายมิติ โดยเฉลี่ยแต่ละคนขาดแคลนตัวชี้วัดประมาณ ${fmt(A*100,1)}% ของทั้งหมด
+      ${MPI>0.1?'ระดับ MPI นี้บ่งชี้ว่าความยากจนไม่ใช่เพียงมิติรายได้ แต่ลึกกว่านั้น ต้องการนโยบายพหุมิติ':'MPI อยู่ในระดับต่ำ แต่ควรติดตามมิติที่ยังมีปัญหาอยู่อย่างต่อเนื่อง'}</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">🔍</div><div class="a-body">
+      <div class="a-title">มิติที่มีปัญหาสูงสุด: ${topDim} | ตัวชี้วัดวิกฤต: ${topIndicator.label} (${topIndicator.pct}%)</div>
+      <div class="a-text">การออกแบบนโยบายควรเริ่มจากมิติ<strong>${topDim}</strong>และตัวชี้วัด<strong>${topIndicator.label}</strong>ที่มีสัดส่วนการขาดแคลนสูงที่สุด เนื่องจากการแก้ไขจุดวิกฤตจะส่งผลลดลง MPI ได้มากที่สุดต่อหน่วยทรัพยากรที่ลงทุน</div>
+    </div></div>
+    <div class="a-row"><div class="a-ico">💡</div><div class="a-body">
+      <div class="a-title">ข้อได้เปรียบของ MPI เหนือเส้นยากจนด้านรายได้</div>
+      <div class="a-text">MPI จับปัญหาที่รายได้วัดไม่ได้ เช่น ครัวเรือนมีรายได้เหนือเส้นยากจน แต่เด็กไม่ได้เรียน หรือไม่มีน้ำสะอาด การใช้ MPI ควบคู่กับ FGT Index ทำให้เห็นภาพความยากจนที่ครบถ้วนกว่า และช่วยจัดลำดับความสำคัญของนโยบายสังคมได้แม่นยำขึ้น</div>
+    </div></div>`;
+
+  $('mpi-result').style.display='block';
+  $('mpi-result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function fillExampleMPI(){
+  [['m-nutrition',18],['m-childmort',8],['m-schooling',25],['m-attendance',12],
+   ['m-cooking',20],['m-sanitation',15],['m-water',10],['m-electricity',8],['m-housing',22],['m-assets',30]]
+  .forEach(([id,v])=>$(id).value=v);
+  $('mpi-pop').value=70000000;
+}
+function fillExamplePL(){
+  $('kcal').value=2100;$('foodPrice').value=8;$('hhSize').value=3.2;
+  $('nf-housing').value=800;$('nf-clothing').value=200;
+  $('nf-transport').value=300;$('nf-other').value=200;
+  $('usdRate').value=35;
+  updateFPL(); updateNFPL();
+}
+
+function exportResult(){
+  const activePane = document.querySelector('.tab-pane.active');
+  html2canvas(activePane,{scale:2,backgroundColor:'#f7f8fa',useCORS:true}).then(c=>{
+    const a=document.createElement('a');
+    a.download='poverty-analysis.png';
+    a.href=c.toDataURL('image/png');
+    a.click();
+  });
+}
+
+// init
+updateFPL(); updateNFPL();
+fillExampleFGT();
+renderTable();
+</script>
+</body>
+</html>
